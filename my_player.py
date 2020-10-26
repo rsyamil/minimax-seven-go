@@ -128,9 +128,7 @@ class MyPlayer:
             next_state = self.advanceState(state, board)
             next_value, _, _ = self._min(alpha, beta, next_state, depth-1, piece_type)
             if next_value > value:
-                value = next_value
-                next_loc = loc
-                action = "MOVE"
+                value, next_loc, action = next_value, loc, "MOVE"
             if value > beta:
                 return value, action, next_loc
             if value > alpha:
@@ -143,8 +141,7 @@ class MyPlayer:
         else:
             next_value, _, _ = self._min(alpha, beta, next_state, depth-1, piece_type)
         if next_value > value:
-            value = next_value
-            action = "PASS"
+            value, action = next_value, "PASS"
         if next_value > beta:
             return value, action, next_loc
         if value > alpha:
@@ -170,9 +167,7 @@ class MyPlayer:
             next_state = self.advanceState(state, board)
             next_value, _, _ = self._max(alpha, beta, next_state, depth-1, piece_type)
             if next_value < value:
-                value = next_value
-                next_loc = loc
-                action = "MOVE"
+                value, next_loc, action = next_value, loc, "MOVE"
             if value <= alpha:
                 return value, action, next_loc
             beta = min(beta, value)
@@ -184,8 +179,7 @@ class MyPlayer:
         else:
             next_value, _, _ = self._max(alpha, beta, next_state, depth-1, piece_type)
         if next_value < value:
-            value = next_value
-            action = "PASS"
+            value, action = next_value, "PASS"
         if next_value < alpha:
             return value, action, next_loc
         beta = min(beta, value)
@@ -247,7 +241,7 @@ if __name__ == "__main__":
     N = 7
     expansion_limit = 15000
     b_tune = 0.5
-    w_tune = 0.18
+    w_tune = 0.19
     
     #read in the current board, tracked num of moves and set up a Go instance state
     piece_type, previous_board, board = readInput(N)    
