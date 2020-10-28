@@ -19,7 +19,11 @@ class MyPlayer:
         #parameters to tune
         self.b_tune = b_tune
         self.w_tune = w_tune
-
+        
+        #strategies to choose from
+        self.spread = True
+        self.aggressive = True
+        
     #weight the score of the board depending on location, tested for odds 5x5, 7x7
     def initScore(self):
         #create placeholder of zeros of board size
@@ -79,7 +83,7 @@ class MyPlayer:
             #at the next expansion depth, consider that one spot has been taken 
             available_loc_count = available_loc_count - 1
             depth = depth + 1
-        return depth                                         #CHECK                
+        return depth -1                                         #CHECK                
          
     #for smart player, minimax with a-b pruning
     def getInputSmart(self):       
@@ -102,8 +106,7 @@ class MyPlayer:
         
     #set-up the next state to branch into
     def advanceState(self, state, board):
-        previous_board = copy.deepcopy(state.board)
-        current_board = copy.deepcopy(board)
+        previous_board, current_board = copy.deepcopy(state.board), copy.deepcopy(board)
         opponent = 3 - state.piece_type             #for next level
         next_state = Go(name="branch", n=state.size, previous_board=previous_board, 
                             current_board=current_board, piece_type=opponent, n_moves=state.n_moves+1) 
@@ -184,7 +187,20 @@ class MyPlayer:
             return value, action, next_loc
         beta = min(beta, value)
         return value, action, next_loc
-    
+        
+    #aggressive score, loop through the board and calculate liberty for all connected pieces
+    def calcAggressiveScore(self, i, j, state, piece_type, allies):
+        test_state = copy.deepcopy(state)
+        test_state.board[i][j] = piece_type
+        allies = test_state.allyBFS(i, j)
+        count = 0
+        for a in allies:
+            neighbors = test_state.detectNeighbors(a[0], a[1])
+            for loc in neighbors:
+                if test_state.board[loc[0]][loc[1]] == (3 - piece_type):      
+                    count = count + 1
+        return count
+        
     #function to evaluate score at the end of the branch, diff between the two players
     #Black 1('X'): positive values or White 2('O'): negative values
     #scale score by depth (the deeper you go, the more relevant is the board when pruning)
@@ -192,6 +208,15 @@ class MyPlayer:
         opponent = 3 - piece_type
         value = 0
         depth_scaler = (state.max_moves - depth) / state.max_moves
+        chi_player = 0
+        chi_opponent = 0
+        aggressive_player = 0
+        aggressive_opponent = 0
+        #select different strategy
+        spread = self.spread
+        aggressive = self.aggressive
+        aggressive_player_allies = []
+        #loop through each point in the board
         for i in range(state.size):
             for j in range(state.size):
                 #if the board is occupied by either player or opponent
@@ -200,40 +225,52 @@ class MyPlayer:
                     if piece_type == 1:
                         if state.board[i][j] == piece_type:
                             value = value + self.arealScore(i, j) / (depth_scaler + self.b_tune)
+                            if aggressive and (i, j) not in aggressive_player_allies:
+                                aggressive_player = aggressive_player + self.calcAggressiveScore(i, j, state, piece_type, aggressive_player_allies)
                         else:
                             value = value - self.arealScore(i, j) / (depth_scaler + self.w_tune)
                     elif piece_type == 2:
                         if state.board[i][j] == piece_type:
                             value = value + self.arealScore(i, j) / (depth_scaler + self.w_tune)
+                            if aggressive and (i, j) not in aggressive_player_allies:
+                                aggressive_player = aggressive_player + self.calcAggressiveScore(i, j, state, piece_type, aggressive_player_allies)
                         else:
-                            value = value - self.arealScore(i, j) / (depth_scaler + self.b_tune)     
+                            value = value - self.arealScore(i, j) / (depth_scaler + self.b_tune)   
                     else:
                         print("Error piece_type in evaluate()")
-                #strategy: cutting (keep your chess together, and opponent separated
+                #strategy: cutting (keep your stones spread to surround opponent)
                 else:
-                    neighbors = state.detectNeighbors(i, j)
-                    '''
-                    for n in neighbors:
-                        if state.board[n[0]][n[1]] == piece_type:
-                            value = value + self.arealScore(i, j)
-                        elif state.board[n[0]][n[1]] == opponent:
-                            value = value - self.arealScore(i, j)
-                        else:
-                            value = value
-                    '''
-                            
+                    if spread:
+                        neighbors = state.detectNeighbors(i, j)
+                        for n in neighbors:
+                            if state.board[n[0]][n[1]] == piece_type:
+                                chi_player = chi_player + self.arealScore(i, j)
+                            elif state.board[n[0]][n[1]] == opponent:
+                                chi_opponent = chi_opponent - self.arealScore(i, j)
+                            else:
+                                value = value              
+        #account for the strategy above
+        if spread:
+            value = value + (chi_player - chi_opponent)
+        if aggressive:
+            value = value + (aggressive_player - aggressive_opponent)
+        #komi compensation 
         if piece_type == 2:
             value = value + state.komi
         else:
             value = value - state.komi
-            
+
         if self.verbose:
             print("EVALUATING... value : ", value)
             print("EVALUATING... depth : ", depth)
             print("EVALUATING... depth_scaler : ", depth_scaler)
+            print("EVALUATING... chi_player : ", chi_player)
+            print("EVALUATING... chi_opponent : ", chi_opponent)
+            print("EVALUATING... chi_diff : ", chi_player - chi_opponent)
+            print("EVALUATING... aggressive_player : ", aggressive_player)
+            print("EVALUATING... aggressive_opponent : ", aggressive_opponent)
         return value
         
-
 if __name__ == "__main__":
 
     #board size
