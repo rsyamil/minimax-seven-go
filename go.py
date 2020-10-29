@@ -37,6 +37,14 @@ class Go:
             return True
         return False
         
+    #split list into two
+    def splitList(self, lis):
+        mid = int(len(lis)/2.0)
+        part1 = lis[:mid]
+        reverse_part1 = part1[::-1]
+        part2 = lis[mid:]
+        return deque(reverse_part1), deque(part2)
+        
     #get and count available points on the board
     def getAvailableLoc(self):
         availableLoc = []
@@ -46,7 +54,15 @@ class Go:
                 if self.board[i][j] == 0:
                     availableLoc.append((i, j))
                     availableLocCount += 1
-        return availableLoc, availableLocCount
+        #sort by location 
+        part1, part2 = self.splitList(availableLoc)
+        availableLoc_heuristic = deque()
+        while part1 or part2:
+            if part1:
+                availableLoc_heuristic.appendleft(part1.pop())
+            if part2:
+                availableLoc_heuristic.appendleft(part2.pop())
+        return list(availableLoc_heuristic), availableLocCount
         
     #calculate the score for any player, 1('X') or 2('O')
     def calcScore(self, piece_type):
