@@ -55,14 +55,16 @@ class Go:
                     availableLoc.append((i, j))
                     availableLocCount += 1
         #sort by location 
-        part1, part2 = self.splitList(availableLoc)
-        availableLoc_heuristic = deque()
-        while part1 or part2:
-            if part1:
-                availableLoc_heuristic.appendleft(part1.pop())
-            if part2:
-                availableLoc_heuristic.appendleft(part2.pop())
-        return list(availableLoc_heuristic), availableLocCount
+        if False:
+            part1, part2 = self.splitList(availableLoc)
+            availableLoc_heuristic = deque()
+            while part1 or part2:
+                if part1:
+                    availableLoc_heuristic.appendleft(part1.pop())
+                if part2:
+                    availableLoc_heuristic.appendleft(part2.pop())
+            return list(availableLoc_heuristic), availableLocCount
+        return availableLoc, availableLocCount
         
     #calculate the score for any player, 1('X') or 2('O')
     def calcScore(self, piece_type):

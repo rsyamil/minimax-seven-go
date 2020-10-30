@@ -116,7 +116,7 @@ class MyPlayer:
     def _max(self, alpha, beta, state, depth, piece_type):
         #check if the terminal condition is reached or expansion isnot needed
         if state.n_moves == state.max_moves or depth == 0:
-            value = self.evaluate(state, depth, piece_type)
+            value = self.evaluate(state, depth, piece_type, "TERMINAL")
             return value, "TERMINAL", (-1, -1)
         #get all possible options
         next_loc = (-1, -1)
@@ -140,7 +140,7 @@ class MyPlayer:
         next_state = self.advanceState(state, state.board)
         #double "PASS"
         if state.sameBoard(state.previous_board, state.board) and state.sameBoard(next_state.previous_board, next_state.board):
-            next_value = self.evaluate(next_state, depth, piece_type)
+            next_value = self.evaluate(next_state, depth, piece_type, "NOTTERMINAL")
         else:
             next_value, _, _ = self._min(alpha, beta, next_state, depth-1, piece_type)
         if next_value > value:
@@ -155,7 +155,7 @@ class MyPlayer:
     def _min(self, alpha, beta, state, depth, piece_type): 
         #check if the terminal condition is reached or expansion isnot needed
         if state.n_moves == state.max_moves or depth == 0:
-            value = self.evaluate(state, depth, piece_type)
+            value = self.evaluate(state, depth, piece_type, "TERMINAL")
             return value, "TERMINAL", (-1, -1)
         #get all possible options
         next_loc = (-1, -1)
@@ -178,7 +178,7 @@ class MyPlayer:
         next_state = self.advanceState(state, state.board)
         #double "PASS"
         if state.sameBoard(state.previous_board, state.board) and state.sameBoard(next_state.previous_board, next_state.board):
-            next_value = self.evaluate(next_state, depth, piece_type)
+            next_value = self.evaluate(next_state, depth, piece_type, "NOTTERMINAL")
         else:
             next_value, _, _ = self._max(alpha, beta, next_state, depth-1, piece_type)
         if next_value < value:
@@ -204,7 +204,10 @@ class MyPlayer:
     #function to evaluate score at the end of the branch, diff between the two players
     #Black 1('X'): positive values or White 2('O'): negative values
     #scale score by depth (the deeper you go, the more relevant is the board when pruning)
-    def evaluate(self, state, depth, piece_type):
+    def evaluate(self, state, depth, piece_type, action):
+        terminal = False
+        if action == "TERMINAL":
+            terminal = True
         opponent = 3 - piece_type
         value = 0
         depth_scaler = (state.max_moves - depth) / state.max_moves
@@ -225,14 +228,14 @@ class MyPlayer:
                     if piece_type == 1:
                         if state.board[i][j] == piece_type:
                             value = value + self.arealScore(i, j) / (depth_scaler + self.b_tune)
-                            if aggressive and (i, j) not in aggressive_player_allies:
+                            if aggressive and not terminal and (i, j) not in aggressive_player_allies:
                                 aggressive_player = aggressive_player + self.calcAggressiveScore(i, j, state, piece_type, aggressive_player_allies)
                         else:
                             value = value - self.arealScore(i, j) / (depth_scaler + self.w_tune)
                     elif piece_type == 2:
                         if state.board[i][j] == piece_type:
                             value = value + self.arealScore(i, j) / (depth_scaler + self.w_tune)
-                            if aggressive and (i, j) not in aggressive_player_allies:
+                            if aggressive and not terminal and (i, j) not in aggressive_player_allies:
                                 aggressive_player = aggressive_player + self.calcAggressiveScore(i, j, state, piece_type, aggressive_player_allies)
                         else:
                             value = value - self.arealScore(i, j) / (depth_scaler + self.b_tune)   
@@ -240,7 +243,7 @@ class MyPlayer:
                         print("Error piece_type in evaluate()")
                 #strategy: cutting (keep your stones spread to surround opponent)
                 else:
-                    if spread:
+                    if spread and not terminal:
                         neighbors = state.detectNeighbors(i, j)
                         for n in neighbors:
                             if state.board[n[0]][n[1]] == piece_type:
@@ -250,9 +253,9 @@ class MyPlayer:
                             else:
                                 value = value              
         #account for the strategy above
-        if spread:
+        if spread and not terminal:
             value = value + (chi_player - chi_opponent)
-        if aggressive:
+        if aggressive and not terminal:
             value = value + (aggressive_player - aggressive_opponent)
         #komi compensation 
         if piece_type == 2:
@@ -276,7 +279,7 @@ if __name__ == "__main__":
     #board size
     verbose = False
     N = 7
-    expansion_limit = 15000
+    expansion_limit = 80000
     b_tune = 0.5
     w_tune = 0.19
     
